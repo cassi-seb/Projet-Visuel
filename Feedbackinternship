@@ -1,0 +1,179 @@
+<!-- Full HTML content with enriched details, more company insights, extended missions, concrete results, and CV integration -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Internship at Sand Rarity - Maeva More</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Playfair Display', serif;
+      margin: 0;
+      background: #fff0f5;
+      color: #4b2c5e;
+    }
+    header {
+      background: linear-gradient(to right, #f6d1e2, #eec6f2);
+      color: #4b2c5e;
+      padding: 30px 0;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    header h1 {
+      font-size: 2.8em;
+      margin: 0;
+    }
+    nav {
+      background: #fbe5f8;
+      padding: 15px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+    }
+    nav a {
+      color: #4b2c5e;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 0 15px;
+      transition: color 0.3s;
+    }
+    nav a:hover {
+      color: #b85fc6;
+    }
+    section {
+      max-width: 950px;
+      margin: 30px auto;
+      background: white;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    h2 {
+      color: #b85fc6;
+      font-size: 1.9em;
+      margin-bottom: 15px;
+    }
+    h3 {
+      color: #7b3f8b;
+    }
+    ul li {
+      line-height: 1.7;
+      margin-bottom: 10px;
+    }
+    p {
+      line-height: 1.7;
+    }
+    img.brand-photo {
+      width: 100%;
+      border-radius: 12px;
+      margin: 25px 0;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    footer {
+      background: #eec6f2;
+      color: #4b2c5e;
+      text-align: center;
+      padding: 20px;
+      margin-top: 50px;
+      font-size: 0.95em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>My Internship at Sand Rarity</h1>
+    <p>🌸 April 15 – June 15, 2025 | Supervisor: Sandy BOGET 🌸</p>
+  </header>
+
+  <nav>
+    <a href="#home">Home</a>
+    <a href="#company">About the Company</a>
+    <a href="#experience">My Experience</a>
+    <a href="#critical">Critical Thinking</a>
+    <a href="#career">My Career Path</a>
+  </nav>
+
+  <section id="home">
+    <h2>Welcome 💖</h2>
+    <p>In the spring of 2025, I joined <strong>Sand Rarity</strong> as a sales assistant intern in their pop-up store located in <em>Galeries Lafayette Reims</em>. Over two months, under the guidance of <strong>Sandy BOGET</strong>, I immersed myself in luxury customer service, product knowledge, and experiential selling. This experience taught me how to communicate effectively, develop product passion, and work as part of a boutique team.</p>
+    <img src="https://www.sandrity.com/wp-content/uploads/2023/03/Sand-Rarity-Visuel.jpg" alt="Sand Rarity products" class="brand-photo">
+  </section>
+
+  <section id="company">
+    <h2>About Sand Rarity ✨</h2>
+    <p><strong>Sand Rarity</strong> is a French premium skincare brand born from the desire to combine natural science and luxury elegance. The brand specializes in products made with organic prickly pear seed oil — known for its antioxidant richness and rarity.</p>
+    <ul>
+      <li>🌿 99% natural ingredients, Ecocert certified</li>
+      <li>🏔️ Handcrafted in the French Alps</li>
+      <li>💎 Focused on holistic beauty, sustainability, and innovation</li>
+    </ul>
+    <p>The brand's philosophy embraces <em>eco-luxury</em> — offering environmentally conscious skincare that respects skin health while delivering refined textures and scents. Sand Rarity targets women who seek authenticity, transparency, and sensual beauty rituals.</p>
+  </section>
+
+  <section id="experience">
+    <h2>My Experience 🌟</h2>
+    <p><strong>Role:</strong> Sales Assistant – Galeries Lafayette Reims</p>
+    <h3>Key Responsibilities</h3>
+    <ul>
+      <li>🏪 Welcoming and advising customers about Sand Rarity's skincare line</li>
+      <li>🎯 Listening to customer needs to offer tailor-made beauty rituals</li>
+      <li>🧴 Conducting personalized product demonstrations and trials</li>
+      <li>📊 Recording sales and customer information in a CRM system</li>
+      <li>🛍️ Maintaining aesthetic merchandising and corner cleanliness</li>
+    </ul>
+    <h3>Skills Acquired – CAR Method</h3>
+    <p><strong>Skill: Beauty Product Demonstration & Persuasion</strong><br>
+    <strong>Context:</strong> Launch phase in a high-traffic luxury store<br>
+    <strong>Action:</strong> Delivered one-on-one product consultations and explained ingredient benefits<br>
+    <strong>Result:</strong> Achieved above-average conversion rate and repeat visits</p>
+
+    <p><strong>Skill: Customer Data Handling</strong><br>
+    <strong>Context:</strong> Daily pop-up operations with a focus on client retention<br>
+    <strong>Action:</strong> Collected, organized, and updated customer profiles after interactions<br>
+    <strong>Result:</strong> Created a reliable CRM database for future campaigns</p>
+  </section>
+
+  <section id="critical">
+    <h2>Critical Thinking 🧠</h2>
+    <p>Prior to my internship, I believed that start-ups were chaotic and lacked structure. Sand Rarity proved me wrong. I discovered a brand that, while agile and adaptive, relied on clear processes, team rituals, and strong values. Each action — from customer greeting to stock check — had its importance in delivering excellence.</p>
+    <h3>What I Learned vs. What I Expected</h3>
+    <ul>
+      <li><strong>Expected:</strong> Autonomy without guidance<br><strong>Observed:</strong> Empowerment with coaching and feedback</li>
+      <li><strong>Expected:</strong> Fast and messy<br><strong>Observed:</strong> Fast but thoughtful</li>
+      <li><strong>Expected:</strong> Purely business<br><strong>Observed:</strong> Emotionally engaging mission and customer connection</li>
+    </ul>
+    <h3>Advantages</h3>
+    <ul>
+      <li>🌟 Real-time responsibility and impact</li>
+      <li>💬 Constant communication and feedback loops</li>
+      <li>🤍 Emotional engagement with brand values</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>⏱️ High rhythm can be overwhelming at first</li>
+      <li>📚 Training is mostly informal and experiential</li>
+    </ul>
+  </section>
+
+  <section id="career">
+    <h2>My Career Path 💼</h2>
+    <p>This internship confirmed my desire to work in luxury marketing, especially within environmentally responsible and innovative companies. I’m currently studying at <strong>NEOMA Business School</strong> (Bachelor in Business Administration, 2022–2026), with a specialization in marketing and communication. I aim to join a global brand like <em>Veuve Clicquot</em> or <em>Dior</em>, contributing to strategic branding and international market expansion.</p>
+
+    <h3>Resume Overview</h3>
+    <ul>
+      <li><strong>🎓 Education:</strong> NEOMA Business School – BBA in Marketing</li>
+      <li><strong>💼 Past Experience:</strong> NH Hotel Paris (hospitality), Sand Rarity (beauty retail)</li>
+      <li><strong>🧠 Skills:</strong> Sales, CRM, Teamwork, Communication, Public Speaking</li>
+      <li><strong>🌍 Languages:</strong> French (native), English (fluent), Spanish (intermediate)</li>
+    </ul>
+
+    <p><strong>📎 Download my full CV:</strong> <a href="Cv%20updated.pdf" target="_blank">Click here to view</a></p>
+  </section>
+
+  <footer>
+    <p>🌸 Website created by Maeva More – Internship Reflection 2025 🌸</p>
+  </footer>
+</body>
+</html>
