@@ -86,155 +86,153 @@ Analytics & BI (SQL Queries)
 Outputs (CSV Reports)
 ```
 
+The **Data Lake** stores data as files and preserves data flexibility and history. We use:
+- **Local file system** for storage
+- **CSV files** for data format
+- **Python** for processing
+
 ---
 
-## 6. Data Source Layer
+## STEP 1 – Data Ingestion (RAW Zone)
 
-### Description
-The data source is open French government data from the DVF (Direction de la Validation Foncière) real estate registry.
+### Purpose
+The RAW Zone stores original data with no transformation. It acts as the source of truth.
 
-### Data Files
-- **stats_dvf_mth.csv**: Monthly aggregated statistics (July 2020 - June 2025)
-  - Geographic hierarchies (communes, EPCI, departments, regions)
-  - Price metrics: median and mean €/m² for apartments and houses
-  - Transaction counts by property type
-  
-- **stats_agg.csv**: Global aggregated statistics (reference data)
-  - Regional and national-level aggregations
+### Data Sources
+The data sources are open **DVF (Direction de la Validation Foncière) datasets** provided as CSV files.
 
 ### Characteristics
-- Public and free
-- Aggregated data (not individual transactions)
-- Missing values for low-volume zones (privacy protection)
-- 5 years of historical data (60+ monthly observations)
-- Geographic hierarchy with ~36,000 locations
+- **Public and free**: Government-provided open data
+- **Static dataset**: Historical snapshot of real estate transactions
+- **Represents real company data**: Realistic data quality and structure
 
 ### Role
-The data source represents the entry point of the data pipeline. It provides authoritative government data on French real estate transactions.
+The data source represents the entry point of the data pipeline.
+
+### Storage Location
+```
+data_lake/raw/
+  ├── stats_dvf.csv (monthly aggregated statistics)
+  └── stats_whole.csv (global aggregates)
+```
+
+### Data Characteristics
+- Monthly aggregated statistics (July 2020 - June 2025)
+- Geographic hierarchies (communes, EPCI, departments, regions)
+- Price metrics: median and mean €/m² for apartments and houses
+- Transaction counts by property type
+- ~36,000 geographic locations
 
 ---
 
-## 7. Data Lake Layer
+## STEP 2 – Data Cleaning (STAGING Zone)
 
 ### Purpose
-The Data Lake stores data as files and preserves data flexibility and history.
+We clean and standardize data to prepare it for analysis.
 
-### Technology
-- Local file system
-- CSV files
-- Python for processing
-- Pandas library for data manipulation
+### Cleaning Rules Applied
 
-### Data Lake Zones
+#### Temporal and Geographic Keys
+- **Keep**: `annee_mois` (time identifier) and geographic keys: `code_geo`, `libelle_geo`, `code_parent`, `echelle_geo`
+- **Time Format**: YYYY-MM format for consistency
 
-#### RAW Zone
-- **Location**: `data_lake/raw/`
-- **Contents**: `stats_dvf_mth.csv`, `stats_agg.csv`
-- **Characteristics**:
-  - Stores original data
-  - No transformation applied
-  - Acts as the source of truth
-  - Never modified
-- **Purpose**: Audit trail and reproducibility
+#### Transaction Count Columns (`nb_ventes_*`)
+- **NA → 0**: Missing values mean no sales occurred
+- **Rationale**: If transaction count is missing, treat as zero transactions
 
-#### STAGING Zone
-- **Location**: `data_lake/staging/`
-- **Contents**: 
-  - `clean_monthly.csv` (processed monthly statistics)
-  - `clean_aggregated.csv` (processed national aggregates)
-- **Characteristics**:
-  - Cleaned and standardized data
-  - Missing values handled with hierarchical imputation
-  - Geographic name normalization
-  - Quality flags added (`_imputation_level` columns)
-  - Duplicates removed
-- **Imputation Strategy**:
-  - Level 0: Real data (no imputation needed)
-  - Level 1: Department median (first fallback)
-  - Level 2: Region median (second fallback)
-  - Level 3: Global median (last resort)
-  - NA: No data available at any level
-- **Purpose**: Bridge between raw data and curated analytics
+#### Price Columns (`moy_prix_m2_*`, `med_prix_m2_*`)
+- **If count == 0**: Set price to NA (cannot estimate when no transactions)
+- **If count > 0 AND price is NA**: 
+  - Impute by **median at parent geographic level** (`code_parent`)
+  - Fallback to median at current level (`code_geo`) if parent unavailable
+  - Add `{col}_imputed` flag to track imputation
+  
+#### Geographic Names (`libelle_geo`)
+- **Fill missing names** with `'Inconnu'` (Unknown) if not recoverable
 
-#### CURATED Zone
-- **Location**: `data_lake/curated/`
-- **Contents**:
-  - `monthly_indicators.csv` (time series by geography)
-  - `top20_by_transactions.csv` (top 20 most active departments)
-  - `top20_by_median_price.csv` (top 20 most expensive departments)
-- **Characteristics**:
-  - BI-ready data
-  - Selected columns only (no imputation flags)
-  - Aggregated to department level (for rankings)
-  - Optimized for analytics queries
-  - No missing prices (already imputed in staging)
-- **Purpose**: Input for the Data Warehouse and direct BI consumption
+#### Column Reduction
+- **Drop columns** with **>80% missing values**
+- **Rationale**: Columns with too many missing values provide minimal analytical value
+
+### Storage Location
+```
+data_lake/staging/
+  ├── clean_monthly.csv (processed monthly statistics)
+  └── clean_aggregated.csv (processed national aggregates)
+```
+
+### Quality Flags Added
+- `{col}_imputed`: Boolean flag (TRUE if price was imputed, FALSE if real data)
+- Allows analysts to filter by data confidence level
+
+### Output of Step 2
+Cleaned, standardized data ready for BI preparation with documented data quality.
 
 ---
 
-## 8. Data Processing Layer
-
-### Technology
-- Python 3.14
-- Pandas library
-- Pathlib for file management
-
-### Scripts and Responsibilities
-
-| Script | Purpose | Input | Output |
-|--------|---------|-------|--------|
-| `01_explore_raw.py` | Explore raw data structure | `stats_dvf.csv` | Console output + statistics |
-| `02_clean_staging.py` | Clean data and apply hierarchical imputation | `stats_dvf.csv`, `stats_whole.csv` | `clean_monthly.csv`, `clean_aggregated.csv` |
-| `03_curated_bi.py` | Prepare BI-ready datasets, remove duplicates | Staging CSVs | Curated CSVs (monthly_indicators, top20 tables) |
-| `04_warehouse_duckdb.py` | Load curated data into DuckDB | Curated CSVs | `realestate.duckdb` |
-| `05_check_warehouse.py` | Validate warehouse integrity | DuckDB tables | Validation report |
-| `06_bi_queries_duckdb.py` | Execute analytical SQL queries | DuckDB tables | Query results (console output) |
-| `07_export_results.py` | Export results to CSV files | DuckDB tables | 5 CSV files in `outputs/` |
-
-### Key Processing Logic
-
-**Data Cleaning (Script 02)**:
-- Remove duplicates
-- Fill missing values using hierarchical strategy
-- Normalize geographic names
-- Track imputation quality with flags
-
-**Deduplication (Script 03)**:
-- Remove EPCI (inter-communal groupings) when child communes exist
-- Prevents double-counting in hierarchical data
-- Filters to department level for final rankings
-
-**Data Preservation**:
-- Processing logic is clearly separated from storage
-- All transformations are documented and reproducible
-
----
-
-## 9. Data Warehouse Layer
+## STEP 3 – BI Preparation (CURATED Zone)
 
 ### Purpose
-The Data Warehouse stores clean, structured data optimized for SQL queries and analytics.
+Prepare **BI-ready data** for analytics and reporting.
+
+### Characteristics
+- **BI-ready data**: Fully processed and aggregated
+- **Selected columns only**: Relevant metrics for analysis
+- **Aggregated datasets**: Grouped to meaningful geographic and temporal levels
+- **Optimized for analytics**: No further transformation needed
+
+### Processing Logic
+
+#### Geographic Deduplication
+- **Remove EPCI** (inter-communal groupings) when child communes exist
+- **Prevent double-counting** in hierarchical data
+- **Example**: Remove "Métropole du Grand Paris" if Paris + child communes present
+
+#### Level Filtering
+- **Filter to department level** for final rankings
+- **Exclude**: Cadastral sections, communes, EPCI for top 20 analysis
+- **Rationale**: Department provides meaningful aggregation without excessive detail
+
+#### Aggregation Strategy
+- **Monthly time series**: Aggregate prices and counts by `annee_mois` and geography
+- **Remove imputation flags**: No longer needed in curated layer
+
+### Storage Location
+```
+data_lake/curated/
+  ├── monthly_indicators.csv (time series by geography)
+  ├── top20_by_transactions.csv (top 20 most active departments)
+  └── top20_by_median_price.csv (top 20 most expensive departments)
+```
+
+### Output of Step 3
+Aggregated, deduplicated datasets ready for Data Warehouse loading.
+
+---
+
+## STEP 4 – Data Warehouse Creation
+
+### Purpose
+The Data Warehouse stores **clean, structured data** optimized for **SQL queries and analytics**.
 
 ### Technology Choice: DuckDB
 
-DuckDB was chosen because:
-- **Embedded**: Runs locally without server setup
-- **No Infrastructure**: Single-file database (`.duckdb`)
-- **No License**: Free and open-source
-- **SQL Standard**: Full support for standard SQL (CTEs, window functions, aggregations)
-- **CSV Integration**: Native `read_csv_auto()` function for seamless data import
-- **Development Speed**: No schema pre-definition required
+**DuckDB was chosen because:**
+- **Runs locally**: No server infrastructure required
+- **Requires no server**: Embedded database (single file)
+- **Requires no license**: Free and open-source
+- **Supports standard SQL**: Full SQL compliance (CTEs, window functions, aggregations)
+- **Optimized for analytical workloads**: Columnar storage, vectorized execution
 
 ### Storage
-
 The Data Warehouse is stored as a local file:
 ```
 warehouse/realestate.duckdb
 ```
 
-### Tables
+### Tables Created
 
-#### Table: `monthly_indicators`
+#### Table 1: `monthly_indicators`
 - **Source**: Curated `monthly_indicators.csv`
 - **Purpose**: Time series of market metrics by geography and month
 - **Key Columns**:
@@ -249,7 +247,7 @@ warehouse/realestate.duckdb
   - `nb_ventes_maison`: House transaction count
 - **Use Cases**: Time series analysis, year-over-year evolution, regional trends
 
-#### Table: `top20_by_transactions`
+#### Table 2: `top20_by_transactions`
 - **Source**: Curated `top20_by_transactions.csv`
 - **Purpose**: Rankings of most active departments by transaction volume
 - **Key Columns**:
@@ -258,7 +256,7 @@ warehouse/realestate.duckdb
   - `transactions_total`: Total transactions (apartments + houses)
 - **Use Cases**: Market activity analysis, volume-based rankings
 
-#### Table: `top20_by_median_price`
+#### Table 3: `top20_by_median_price`
 - **Source**: Curated `top20_by_median_price.csv`
 - **Purpose**: Rankings of most expensive departments by median price
 - **Key Columns**:
@@ -267,40 +265,86 @@ warehouse/realestate.duckdb
   - `median_price_m2`: Median price per m² (€)
 - **Use Cases**: Price-based rankings, prestige market identification
 
+### Output of Step 4
+Structured DuckDB warehouse with 3 optimized tables for analytical queries.
+
 ---
 
-## 10. Analytics and BI Layer
+## STEP 5 – Data Warehouse Validation
 
 ### Purpose
-This layer enables data analysis and business insights through SQL queries.
+Validate the integrity and correctness of the Data Warehouse.
+
+### Validation Checks
+
+#### Data Completeness
+- All curated CSV files successfully loaded
+- No missing required columns in DuckDB tables
+- Row count matches source data
+
+#### Data Quality
+- No NULL values in key columns (code_geo, annee_mois)
+- Price values within reasonable range (€0 - €20,000/m²)
+- Transaction counts are non-negative integers
+
+#### Geographic Consistency
+- All geographic codes resolve to valid names
+- No duplicate entries for (code_geo, annee_mois) combinations
+- Top 20 rankings contain exactly 20 unique departments
+
+#### Data Integrity
+- Aggregations are mathematically sound
+- Price ordering is correct (top 20 by price properly sorted)
+- Time series is chronologically ordered
+
+### Validation Output
+Script `05_check_warehouse.py` generates validation report confirming:
+- ✅ All tables loaded successfully
+- ✅ Row counts verified
+- ✅ Data type consistency
+- ✅ No unexpected NULL values
+
+---
+
+## STEP 6 – Business Intelligence Analysis
+
+### Purpose
+This layer enables **data analysis and business insights** through SQL queries on the Data Warehouse.
 
 ### Capabilities
-- Complex SQL queries (aggregations, filtering, grouping)
-- Time series analysis (monthly trends)
-- Geographic comparisons (regional disparities)
-- Metrics and KPIs (medians, means, counts)
-- Correlation analysis (price vs. volume)
-- Export of results for external consumption
+- **SQL queries**: Complex aggregations and filtering
+- **Aggregations**: Group by time, geography, property type
+- **Metrics and indicators**: Medians, means, totals, growth rates
+- **Export of results**: Results to CSV for reports and dashboards
 
 ### Example Analyses
 
-**Market Trend Analysis**:
-- Year-over-year price evolution (apartments vs. houses)
-- Identification of growth periods and slowdowns
-- Peak pricing identification
+#### Analysis 1: Market Trend
+- **Question**: Is the real estate market increasing, decreasing, or stable?
+- **Query**: Year-over-year median price evolution (apartments vs. houses)
+- **Output**: `price_evolution_yoy.csv`
 
-**Geographic Analysis**:
-- Most active departments by transaction volume
-- Most expensive departments by median price
-- Regional price disparities
-- Correlation between price and activity level
+#### Analysis 2: Geographic Activity
+- **Question**: Which departments have the most transactions?
+- **Query**: Top 10 departments by transaction volume
+- **Output**: `top10_departments_by_transactions.csv`
 
-**Data Quality Assessment**:
-- Distribution of imputation levels
-- Coverage analysis by geographic zone
-- Missing data identification
+#### Analysis 3: Price Rankings
+- **Question**: Which departments are most expensive?
+- **Query**: Top 10 departments by median €/m²
+- **Output**: `top10_departments_by_price.csv`
 
-### Query Examples
+#### Analysis 4: Market Snapshot
+- **Question**: What is the current market status?
+- **Query**: Latest month indicators across all departments
+- **Output**: `latest_month_2025-06.csv`
+
+#### Analysis 5: Time Series Export
+- **Question**: What are the complete historical trends?
+- **Query**: Full dataset for custom analysis and visualization
+- **Output**: `monthly_indicators_export.csv`
+
+### SQL Query Examples
 
 **Query 1: Market Trend**
 ```sql
@@ -314,7 +358,8 @@ ORDER BY annee_mois;
 
 **Query 2: Top 10 Most Active Departments**
 ```sql
-SELECT code_geo, libelle_geo, SUM(nb_ventes_appartement + nb_ventes_maison) as total_transactions
+SELECT code_geo, libelle_geo, 
+       SUM(nb_ventes_appartement + nb_ventes_maison) as total_transactions
 FROM monthly_indicators
 GROUP BY code_geo, libelle_geo
 ORDER BY total_transactions DESC
@@ -323,16 +368,20 @@ LIMIT 10;
 
 **Query 3: Most Expensive Departments**
 ```sql
-SELECT code_geo, libelle_geo, MEDIAN(med_prix_m2_appartement) as median_price
+SELECT code_geo, libelle_geo, 
+       ROUND(MEDIAN(med_prix_m2_appartement), 2) as median_price
 FROM monthly_indicators
 GROUP BY code_geo, libelle_geo
 ORDER BY median_price DESC
 LIMIT 10;
 ```
 
+### Output of Step 6
+Five CSV files in `outputs/` directory ready for reporting, visualization, and stakeholder communication.
+
 ---
 
-## 11. Outputs
+## OUTPUTS
 
 ### Purpose
 Final results are exported as CSV files for reporting, visualization, and external consumption.
@@ -344,99 +393,118 @@ Final results are exported as CSV files for reporting, visualization, and extern
 | `monthly_indicators_export.csv` | Complete time series (60+ months, all departments) | Historical analysis, trend visualization |
 | `top10_departments_by_transactions.csv` | Top 10 most active departments | Market activity report |
 | `top10_departments_by_price.csv` | Top 10 most expensive departments | Prestige market report |
-| `price_evolution.csv` | Year-over-year price evolution (apartments & houses) | Market trend analysis, executive summary |
+| `price_evolution_yoy.csv` | Year-over-year price evolution (apartments & houses) | Market trend analysis, executive summary |
 | `latest_month_2025-06.csv` | Snapshot of most recent month | Current market status |
 
 ### Output Location
 ```
 outputs/
 ```
+
 These files can be used for dashboards, reports, presentations, or further analysis.
 
 ---
 
-## 12. Data Quality Considerations
+## Data Processing Scripts
 
-### Quality Flags
-Each price column in staging data includes an `_imputation_level` flag indicating data confidence:
-- **0**: Real data (no imputation)
-- **1**: Department-level median (imputed)
-- **2**: Region-level median (imputed)
-- **3**: Global median (imputed)
+### Overview
+All processing logic follows a clear sequence aligned with the 6 steps of the lab.
 
-### Quality Limitations
-1. **Aggregation Level**: DVF provides aggregated statistics, not individual transactions
-2. **Geographic Gaps**: Some cadastral sections have no transactions (prices missing)
-3. **Privacy Protection**: Low-volume zones are suppressed in official data
-4. **Category Limitation**: Only apartment/house distinction (no property-level attributes)
-5. **Temporal Lag**: Latest months (2025-2026) may have incomplete data
+### Script Summary
 
-### Data Quality Best Practices Implemented
-- RAW data never modified (immutability)
-- Quality flags track imputation decisions
-- Geographic deduplication removes double-counting
-- Hierarchical imputation preserves regional variation
-- Version control for reproducibility
+| Step | Script | Purpose | Input | Output |
+|------|--------|---------|-------|--------|
+| 1 | `01_explore_raw.py` | Explore raw data structure | RAW zone CSVs | Console statistics |
+| 2 | `02_clean_staging.py` | Apply cleaning rules (na→0, imputation, name filling) | RAW zone CSVs | STAGING zone CSVs |
+| 3 | `03_curated_bi.py` | Geographic deduplication, department-level aggregation | STAGING CSVs | CURATED CSVs |
+| 4 | `04_warehouse_duckdb.py` | Load curated data into DuckDB tables | CURATED CSVs | `realestate.duckdb` |
+| 5 | `05_check_warehouse.py` | Validate warehouse integrity and data quality | DuckDB tables | Validation report |
+| 6 | `06_bi_queries_duckdb.py` | Execute 6 analytical SQL queries | DuckDB tables | Console output |
+| 6 | `07_export_results.py` | Export query results to CSV files | DuckDB tables | 5 CSV files |
 
----
-
-## 13. Architecture Flow Summary
-
-The data flow follows this logic:
-
-```
-1. RAW LAYER
-   ↓
-   stats_dvf.csv, stats_whole.csv
-   (Original French government data)
-   
-2. STAGING LAYER
-   ↓
-   Script 02: Clean, normalize, hierarchically impute prices
-   Add quality flags (_imputation_level)
-   
-3. CURATED LAYER
-   ↓
-   Script 03: Deduplicate hierarchies, aggregate to meaningful levels
-   Prepare BI-ready datasets
-   
-4. WAREHOUSE LAYER
-   ↓
-   Script 04: Load curated data into DuckDB tables
-   
-5. ANALYTICS LAYER
-   ↓
-   Script 06: Execute SQL queries for insights
-   
-6. OUTPUT LAYER
-   ↓
-   Script 07: Export results to CSV files
-   (For dashboards, reports, external consumption)
-```
-
----
-
-## 14. Technology Stack Summary
+### Technology Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Data Source** | French DVF (CSV) | Real estate statistics |
-| **Data Lake** | Local file system + CSV | Raw and processed data storage |
 | **Processing** | Python 3.14 + Pandas | Data transformation and cleaning |
-| **Data Warehouse** | DuckDB | SQL-based analytics |
+| **Data Lake** | Local file system + CSV | Raw and processed data storage |
+| **Warehouse** | DuckDB | SQL-based analytics |
 | **Scripting** | Python | Automation and orchestration |
 | **Output** | CSV files | External reporting and visualization |
 
 ---
 
-## Conclusion
+## Architecture Data Flow Summary
 
-This architecture demonstrates modern data engineering best practices:
-- **Separation of Concerns**: Clear layers with defined responsibilities
-- **Data Governance**: Immutable raw data, tracked transformations
-- **Quality Assurance**: Hierarchical imputation with quality flags
-- **Scalability**: Open-source tools suitable for lab and production environments
-- **Accessibility**: SQL-based analytics enabling diverse analytical use cases
+The data flow follows this complete logic:
 
-The platform successfully ingests, transforms, and analyzes 5 years of French real estate data, providing actionable business intelligence for market analysis and decision-making.
+```
+┌────────────────────────────────────────────────────────────┐
+│ STEP 1: DATA INGESTION (RAW)                              │
+│ Source: Open DVF datasets (stats_dvf.csv, stats_whole.csv) │
+│ Location: data_lake/raw/                                   │
+│ Action: No transformation - source of truth                │
+└────────────────┬───────────────────────────────────────────┘
+                 ↓
+┌────────────────────────────────────────────────────────────┐
+│ STEP 2: DATA CLEANING (STAGING)                           │
+│ Script: 02_clean_staging.py                                │
+│ Rules:                                                      │
+│ • nb_ventes_* : NA → 0                                     │
+│ • Prices: if count==0 → NA; if count>0 & price NA → impute│
+│ • Geo names: NA → 'Inconnu'                                │
+│ • Drop columns with >80% missing                           │
+│ Location: data_lake/staging/                               │
+│ Output: clean_monthly.csv, clean_aggregated.csv           │
+└────────────────┬───────────────────────────────────────────┘
+                 ↓
+┌────────────────────────────────────────────────────────────┐
+│ STEP 3: BI PREPARATION (CURATED)                          │
+│ Script: 03_curated_bi.py                                   │
+│ Actions:                                                    │
+│ • Remove EPCI if child communes exist (deduplication)      │
+│ • Filter to department level (no communes/sections)        │
+│ • Aggregate by month and geography                         │
+│ • Remove imputation flags                                  │
+│ Location: data_lake/curated/                               │
+│ Output: monthly_indicators.csv, top20_* tables             │
+└────────────────┬───────────────────────────────────────────┘
+                 ↓
+┌────────────────────────────────────────────────────────────┐
+│ STEP 4: WAREHOUSE CREATION                                │
+│ Script: 04_warehouse_duckdb.py                             │
+│ Technology: DuckDB (local, no server, free, SQL-optimized) │
+│ Location: warehouse/realestate.duckdb                      │
+│ Tables:                                                     │
+│ • monthly_indicators (time series)                         │
+│ • top20_by_transactions (volume rankings)                  │
+│ • top20_by_median_price (price rankings)                   │
+└────────────────┬───────────────────────────────────────────┘
+                 ↓
+┌────────────────────────────────────────────────────────────┐
+│ STEP 5: WAREHOUSE VALIDATION                              │
+│ Script: 05_check_warehouse.py                              │
+│ Validation: Row counts, NULL values, data types            │
+│ Output: Validation report (✅ all checks passed)           │
+└────────────────┬───────────────────────────────────────────┘
+                 ↓
+┌────────────────────────────────────────────────────────────┐
+│ STEP 6: BUSINESS INTELLIGENCE ANALYSIS                    │
+│ Scripts: 06_bi_queries_duckdb.py + 07_export_results.py   │
+│ Queries:                                                    │
+│ • Market trend (price evolution)                           │
+│ • Top 10 by transactions                                   │
+│ • Top 10 by price                                          │
+│ • Regional disparities                                     │
+│ • Geographic correlation analysis                          │
+│ Output: 5 CSV files in outputs/                            │
+│                                                             │
+│ Results Ready for:                                         │
+│ ✓ Executive dashboards                                     │
+│ ✓ Market reports                                           │
+│ ✓ Stakeholder presentations                                │
+│ ✓ Further statistical analysis                             │
+└────────────────────────────────────────────────────────────┘
+```
 
+---
